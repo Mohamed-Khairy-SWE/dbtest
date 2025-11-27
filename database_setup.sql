@@ -1,20 +1,9 @@
--- 1. CLEANUP (For development/resetting)
-DROP VIEW IF EXISTS dashboard_loans_view;
-DROP TRIGGER IF EXISTS trg_update_stock ON loans;
-DROP FUNCTION IF EXISTS update_stock_func;
-DROP PROCEDURE IF EXISTS borrow_book_procedure;
-DROP FUNCTION IF EXISTS calculate_overdue_fine;
-DROP TABLE IF EXISTS fines;
-DROP TABLE IF EXISTS loans;
-DROP TABLE IF EXISTS books;
-DROP TABLE IF EXISTS users;
 
--- 2. CREATE TABLES
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    role VARCHAR(20) DEFAULT 'student' -- student, staff
+    role VARCHAR(20) DEFAULT 'student'
 );
 
 CREATE TABLE books (
@@ -33,7 +22,7 @@ CREATE TABLE loans (
     borrow_date DATE DEFAULT CURRENT_DATE,
     due_date DATE DEFAULT CURRENT_DATE + INTERVAL '14 days',
     return_date DATE,
-    status VARCHAR(20) DEFAULT 'active' -- active, returned, overdue
+    status VARCHAR(20) DEFAULT 'active'
 );
 
 CREATE TABLE fines (
@@ -43,8 +32,7 @@ CREATE TABLE fines (
     is_paid BOOLEAN DEFAULT FALSE
 );
 
--- 3. CONCEPT 1: FUNCTION
--- specific purpose: Calculate fine based on days overdue ($1 per day)
+
 CREATE OR REPLACE FUNCTION calculate_overdue_fine(p_loan_id INT) 
 RETURNS DECIMAL AS $$
 DECLARE
@@ -59,23 +47,20 @@ BEGIN
 
     IF v_return_date > v_due_date THEN
         v_days_overdue := v_return_date - v_due_date;
-        v_fine := v_days_overdue * 1.00; -- $1 per day penalty
+        v_fine := v_days_overdue * 1.00; 
     END IF;
 
     RETURN v_fine;
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. CONCEPT 2: TRIGGER
--- Specific purpose: Auto-manage inventory when loans happen
 CREATE OR REPLACE FUNCTION update_stock_func() RETURNS TRIGGER AS $$
 BEGIN
-    -- If a new loan is created, decrease stock
+    
     IF (TG_OP = 'INSERT') THEN
         UPDATE books SET available_copies = available_copies - 1 
         WHERE id = NEW.book_id;
     
-    -- If a book is returned (return_date updated), increase stock
     ELSIF (TG_OP = 'UPDATE' AND OLD.return_date IS NULL AND NEW.return_date IS NOT NULL) THEN
         UPDATE books SET available_copies = available_copies + 1 
         WHERE id = NEW.book_id;
@@ -88,8 +73,6 @@ CREATE TRIGGER trg_update_stock
 AFTER INSERT OR UPDATE ON loans
 FOR EACH ROW EXECUTE FUNCTION update_stock_func();
 
--- 5. CONCEPT 3: STORED PROCEDURE
--- Specific purpose: Safe borrowing transaction. Checks stock first.
 CREATE OR REPLACE PROCEDURE borrow_book_procedure(
     p_user_id INT, 
     p_book_id INT
@@ -110,8 +93,7 @@ BEGIN
 END;
 $$;
 
--- 6. CONCEPT 4: VIEW
--- Specific purpose: Simplified report for the Frontend
+
 CREATE VIEW dashboard_loans_view AS
 SELECT 
     l.id AS loan_id,

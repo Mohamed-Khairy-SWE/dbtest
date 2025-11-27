@@ -69,11 +69,11 @@ export default function LibraryDashboard({ users, books, loans }: DashboardProps
           <select 
             value={currentUserId} 
             onChange={(e) => handleUserChange(e.target.value)}
-            className="text-black px-3 py-1 rounded border-none outline-none"
+            className="text-white px-3 py-1 rounded border-none outline-none"
           >
             <option value="">-- Select User (Admin View) --</option>
             {users.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+              <option className='text-black' key={u.id} value={u.id}>{u.name} ({u.role})</option>
             ))}
           </select>
         </div>
